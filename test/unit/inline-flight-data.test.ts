@@ -22,6 +22,18 @@ function decodeScripts(html: Buffer): Array<[number, string?]> {
 }
 
 describe('Node inline Flight data', () => {
+  it('propagates an encoder error that occurred before hydration started', async () => {
+    const source = new PassThrough({ objectMode: true })
+    const error = new Error('encoder failed before hydration started')
+    const sourceError = once(source, 'error')
+    source.destroy(error)
+    await sourceError
+
+    await expect(
+      collect(createNodeInlinedDataStream(source, undefined, null) as Readable)
+    ).rejects.toBe(error)
+  })
+
   // E2E tests exercise real Flight rendering and hydration. These inputs force
   // chunk boundaries that a real server cannot reliably produce on demand.
   it.each([
