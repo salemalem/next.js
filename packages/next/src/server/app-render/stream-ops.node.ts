@@ -549,12 +549,26 @@ export function renderToNodeFlightStream(
     throw new Error('renderToPipeableStream is not implemented')
   }
 
+  const { signal, ...renderOptions } = opts ?? {}
+  const pipeable = ComponentMod.renderToPipeableStream!(
+    payload,
+    clientModules,
+    renderOptions
+  )
+  return pipeFlightToNodeStream(pipeable, signal)
+}
+
+function pipeFlightToNodeStream(
+  pipeable: ReturnType<
+    NonNullable<FlightComponentMod['renderToPipeableStream']>
+  >,
+  signal: AbortSignal | undefined
+): AnyStream {
   // `renderToPipeableStream` has no `signal` option (unlike the Web
   // `renderToReadableStream`), so pull `signal` out of the options and abort
   // the returned pipeable ourselves when it fires. We drop the listener when
   // the passthrough closes so a finished render's `pipeable` isn't retained by
   // the request signal, which can outlive it.
-  const { signal, ...renderOptions } = opts ?? {}
 
   // Retain React's original writes for the Node Flight reader and hydration.
   // Normalize each string independently to match UTF-8 encoding's replacement
@@ -565,11 +579,6 @@ export function renderToNodeFlightStream(
       callback(null, typeof chunk === 'string' ? chunk.toWellFormed() : chunk)
     },
   })
-  const pipeable = ComponentMod.renderToPipeableStream!(
-    payload,
-    clientModules,
-    renderOptions
-  )
 
   // If the destination is destroyed before the render ended, React aborts with a
   // generic "The destination stream closed early." error that `onError` can't
