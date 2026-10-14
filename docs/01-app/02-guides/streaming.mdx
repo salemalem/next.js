@@ -614,11 +614,13 @@ Once streaming begins, the HTTP response headers (including the status code) hav
 
 ### Status codes
 
-When a `<Suspense>` fallback renders or a component suspends, the server must commit to `200 OK` in order to start sending the HTML stream. If a [`notFound()`](/docs/app/api-reference/functions/not-found) fires mid-stream, Next.js cannot go back and change the status to 404. Instead, it injects `<meta name="robots" content="noindex">` into the streamed HTML so that search engines don't index the page. Similarly, a [`redirect()`](/docs/app/api-reference/functions/redirect) mid-stream becomes a client-side redirect rather than an HTTP redirect header.
+When a `<Suspense>` fallback renders or a component suspends, the server must commit to `200 OK` to start sending the HTML stream. If a [`notFound()`](/docs/app/api-reference/functions/not-found) fires mid-stream, Next.js cannot go back and change the status to `404`. Instead, it injects `<meta name="robots" content="noindex">` into the streamed HTML so that search engines don't index the page. Similarly, a [`redirect()`](/docs/app/api-reference/functions/redirect) mid-stream becomes a client-side redirect rather than an HTTP redirect header.
+
+With [Cache Components](/docs/app/getting-started/caching), serving the prerendered shell also commits the response headers. A request-time interrupt cannot change the status after the shell is served, even when the shell has no visible UI.
 
 ### When does streaming start?
 
-The response body begins streaming when a Suspense fallback renders (for example, a `loading.tsx`) or when a component suspends under a `<Suspense>` boundary. To get a real HTTP status code for errors, place `notFound()` **before** any `await` or `<Suspense>` boundary:
+Without Cache Components, rendering a fallback from [`loading.js`](/docs/app/api-reference/file-conventions/loading) or `<Suspense>` starts streaming. The following example keeps the existence check outside `<Suspense>` so the fallback cannot stream before the check finishes:
 
 ```tsx filename="app/post/[slug]/page.tsx" switcher
 import { Suspense } from 'react'
@@ -636,8 +638,8 @@ export default async function PostPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const exists = await checkSlugExists(slug) // Fast existence check
-  if (!exists) notFound() // Real 404, before any Suspense boundary
+  const exists = await checkSlugExists(slug)
+  if (!exists) notFound()
 
   return (
     <Suspense fallback={<p>Loading post...</p>}>
@@ -659,8 +661,8 @@ export async function generateStaticParams() {
 
 export default async function PostPage({ params }) {
   const { slug } = await params
-  const exists = await checkSlugExists(slug) // Fast existence check
-  if (!exists) notFound() // Real 404, before any Suspense boundary
+  const exists = await checkSlugExists(slug)
+  if (!exists) notFound()
 
   return (
     <Suspense fallback={<p>Loading post...</p>}>
@@ -670,7 +672,11 @@ export default async function PostPage({ params }) {
 }
 ```
 
-> **Good to know:** You can also reject requests early using [`proxy`](/docs/app/api-reference/file-conventions/proxy) (for redirects, rewrites, or returning a response) or [`next.config.js` redirects](/docs/app/api-reference/config/next-config-js/redirects). Both run before the page renders, so HTTP status codes are still available.
+With Cache Components, the prerendered shell can start streaming before this request-time check, even when the shell has no visible UI. In that case, `notFound()` renders the not-found UI and adds `noindex`, but the status remains `200`.
+
+To guarantee a request-time `404`, return a response from [`proxy`](/docs/app/api-reference/file-conventions/proxy) before the page renders.
+
+> **Good to know:** Redirects configured in [`next.config.js`](/docs/app/api-reference/config/next-config-js/redirects) are checked before the page renders and return a `307` or `308` response. [Proxy](/docs/app/api-reference/file-conventions/proxy) also runs before rendering, so it can redirect, rewrite, or return a response before page streaming begins.
 
 ### Bots and crawlers
 
