@@ -25,6 +25,12 @@ type FlightPrerenderToNodeStream = (...args: any[]) => Promise<{
 /* eslint-disable import/no-extraneous-dependencies */
 export let renderToPipeableStream: FlightRenderToPipeableStream | undefined
 export let prerenderToNodeStream: FlightPrerenderToNodeStream | undefined
+export let renderToResult:
+  | typeof import('react-server-dom-webpack/server.node').renderToResult
+  | undefined
+export let renderResultToPipeableStream:
+  | typeof import('react-server-dom-webpack/server.node').renderResultToPipeableStream
+  | undefined
 if (process.env.__NEXT_USE_NODE_STREAMS) {
   renderToPipeableStream = (
     require('react-server-dom-webpack/server.node') as typeof import('react-server-dom-webpack/server.node')
@@ -32,9 +38,15 @@ if (process.env.__NEXT_USE_NODE_STREAMS) {
   prerenderToNodeStream = (
     require('react-server-dom-webpack/static') as typeof import('react-server-dom-webpack/static')
   ).prerenderToNodeStream
+  const resultServer =
+    require('react-server-dom-webpack/server.node') as typeof import('react-server-dom-webpack/server.node')
+  renderToResult = resultServer.renderToResult
+  renderResultToPipeableStream = resultServer.renderResultToPipeableStream
 } else {
   renderToPipeableStream = undefined
   prerenderToNodeStream = undefined
+  renderToResult = undefined
+  renderResultToPipeableStream = undefined
 }
 /* eslint-enable import/no-extraneous-dependencies */
 

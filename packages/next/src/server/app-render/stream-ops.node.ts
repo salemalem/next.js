@@ -78,6 +78,7 @@ export type {
 export type AnyStream = AnyStreamType
 
 export type FlightComponentMod = {
+  renderResultToPipeableStream?: typeof import('react-server-dom-webpack/server.node').renderResultToPipeableStream
   renderToReadableStream: (
     model: any,
     webpackMap: any,
@@ -552,6 +553,24 @@ export function renderToNodeFlightStream(
   const { signal, ...renderOptions } = opts ?? {}
   const pipeable = ComponentMod.renderToPipeableStream!(
     payload,
+    clientModules,
+    renderOptions
+  )
+  return pipeFlightToNodeStream(pipeable, signal)
+}
+
+export function renderResultToNodeStream(
+  ComponentMod: FlightComponentMod,
+  result: import('react-server-dom-webpack/server.node').Result,
+  clientModules: FlightClientModules,
+  opts: Omit<FlightRenderOptions, 'debugChannel'>
+): AnyStream {
+  if (!ComponentMod.renderResultToPipeableStream) {
+    throw new Error('renderResultToPipeableStream is not implemented')
+  }
+  const { signal, ...renderOptions } = opts ?? {}
+  const pipeable = ComponentMod.renderResultToPipeableStream(
+    result,
     clientModules,
     renderOptions
   )
