@@ -117,22 +117,8 @@ export async function getStaticInfoIncludingLayouts({
           }
         }
 
-        const rsc = turbopack.rsc
-        // Webpack omits RSC metadata when its static-info parse heuristic doesn't match. It also
-        // reports raw client component source as a server module because the client marker is only
-        // added later by its transform. Ignore only those known gaps; otherwise validate the
-        // values, including requiring Turbopack metadata when webpack found metadata.
-        if (
-          baseline.rsc === undefined ||
-          (baseline.rsc === 'server' && turbopack.rsc === 'client')
-        ) {
-          delete baseline.rsc
-          delete turbopack.rsc
-        }
-        turbopack = sort(turbopack) as PageStaticInfo
-
         if (JSON.stringify(baseline) === JSON.stringify(turbopack)) {
-          return { ...turbopack, rsc }
+          return turbopack
         }
 
         validationError = new Error(
