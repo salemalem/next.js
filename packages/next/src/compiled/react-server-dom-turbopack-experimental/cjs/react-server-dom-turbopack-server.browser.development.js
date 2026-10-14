@@ -209,7 +209,7 @@
     }
     function preload(href, as, options) {
       if ("string" === typeof href) {
-        var request = resolveRequest();
+        var request = currentRequest ? currentRequest : null;
         if (request) {
           var hints = request.hints,
             key = "L";
@@ -234,7 +234,7 @@
     }
     function preloadModule$1(href, options) {
       if ("string" === typeof href) {
-        var request = resolveRequest();
+        var request = currentRequest ? currentRequest : null;
         if (request) {
           var hints = request.hints,
             key = "m|" + href;
@@ -574,6 +574,11 @@
     function unsupportedContext() {
       throw Error("Cannot read a Client Context from a Server Component.");
     }
+    function setCurrentCache(cache) {
+      var previousCache = currentCache;
+      currentCache = cache;
+      return previousCache;
+    }
     function resolveOwner() {
       return currentOwner ? currentOwner : null;
     }
@@ -816,7 +821,7 @@
         var originalMethod = descriptor.value;
         descriptor = Object.getOwnPropertyDescriptor(originalMethod, "name");
         var wrapperMethod = function () {
-          var request = resolveRequest();
+          var request = currentRequest ? currentRequest : null;
           if (("assert" !== methodName || !arguments[0]) && null !== request) {
             a: {
               var error = Error("react-stack-top-frame");
@@ -1129,9 +1134,6 @@
         filterStackFrame,
         keepDebugAlive
       );
-    }
-    function resolveRequest() {
-      return currentRequest ? currentRequest : null;
     }
     function serializeDebugThenable(request, counter, thenable) {
       request.pendingDebugChunks++;
@@ -2874,6 +2876,7 @@
     function logRecoverableError(request, error, task) {
       var prevRequest = currentRequest;
       currentRequest = null;
+      var prevCache = setCurrentCache(null);
       try {
         var onError = request.onError;
         var errorDigest =
@@ -2881,7 +2884,7 @@
             ? callWithDebugContextInDEV(request, task, onError, error)
             : onError(error);
       } finally {
-        currentRequest = prevRequest;
+        (currentRequest = prevRequest), setCurrentCache(prevCache);
       }
       if (null != errorDigest && "string" !== typeof errorDigest)
         throw Error(
@@ -3910,7 +3913,9 @@
       var prevDispatcher = ReactSharedInternalsServer.H;
       ReactSharedInternalsServer.H = HooksDispatcher;
       var prevRequest = currentRequest;
-      currentRequest$1 = currentRequest = request;
+      currentRequest = request;
+      var prevCache = setCurrentCache(request);
+      currentRequest$1 = request;
       try {
         var pingedTasks = request.pingedTasks;
         request.pingedTasks = [];
@@ -3922,7 +3927,8 @@
       } finally {
         (ReactSharedInternalsServer.H = prevDispatcher),
           (currentRequest$1 = null),
-          (currentRequest = prevRequest);
+          (currentRequest = prevRequest),
+          setCurrentCache(prevCache);
       }
     }
     function abortTask(task) {
@@ -5731,7 +5737,7 @@
       r: previousDispatcher.r,
       D: function (href) {
         if ("string" === typeof href && href) {
-          var request = resolveRequest();
+          var request = currentRequest ? currentRequest : null;
           if (request) {
             var hints = request.hints,
               key = "D|" + href;
@@ -5741,7 +5747,7 @@
       },
       C: function (href, crossOrigin) {
         if ("string" === typeof href) {
-          var request = resolveRequest();
+          var request = currentRequest ? currentRequest : null;
           if (request) {
             var hints = request.hints,
               key =
@@ -5761,7 +5767,7 @@
       m: preloadModule$1,
       X: function (src, options) {
         if ("string" === typeof src) {
-          var request = resolveRequest();
+          var request = currentRequest ? currentRequest : null;
           if (request) {
             var hints = request.hints,
               key = "X|" + src;
@@ -5776,7 +5782,7 @@
       },
       S: function (href, precedence, options) {
         if ("string" === typeof href) {
-          var request = resolveRequest();
+          var request = currentRequest ? currentRequest : null;
           if (request) {
             var hints = request.hints,
               key = "S|" + href;
@@ -5797,7 +5803,7 @@
       },
       M: function (src, options) {
         if ("string" === typeof src) {
-          var request = resolveRequest();
+          var request = currentRequest ? currentRequest : null;
           if (request) {
             var hints = request.hints,
               key = "M|" + src;
@@ -5949,18 +5955,20 @@
         },
         useEffectEvent: unsupportedHook
       },
+      currentCache = null,
       currentOwner = null,
       DefaultAsyncDispatcher = {
         getCacheForType: function (resourceType) {
-          var cache = (cache = resolveRequest()) ? cache.cache : new Map();
-          var entry = cache.get(resourceType);
+          var context = currentCache ? currentCache : null;
+          context = context ? context.cache : new Map();
+          var entry = context.get(resourceType);
           void 0 === entry &&
-            ((entry = resourceType()), cache.set(resourceType, entry));
+            ((entry = resourceType()), context.set(resourceType, entry));
           return entry;
         },
         cacheSignal: function () {
-          var request = resolveRequest();
-          return request ? request.cacheController.signal : null;
+          var context = currentCache ? currentCache : null;
+          return context ? context.cacheController.signal : null;
         }
       };
     DefaultAsyncDispatcher.getOwner = resolveOwner;
