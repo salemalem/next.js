@@ -74,15 +74,19 @@ export async function getStaticInfoIncludingLayouts({
     // Excluded in Turbopack info. Already emitted as issue by Turbopack
     delete baseline.hadUnsupportedValue
     // Normalization
+    // The baseline may skip parsing, so false and missing metadata-export flags
+    // are equivalent. Turbopack omits false flags.
     if (!baseline.generateImageMetadata) delete baseline.generateImageMetadata
     if (!baseline.generateSitemaps) delete baseline.generateSitemaps
-    if (!baseline.generateStaticParams) delete baseline.generateStaticParams
+    // Empty and missing middleware configurations are equivalent.
     if (
       baseline.middleware &&
       Object.entries(baseline.middleware).length === 0
     ) {
       delete baseline.middleware
     }
+    // Downstream runtime selection treats both aliases as Edge; Turbopack emits the canonical
+    // 'edge'.
     if (baseline.runtime === 'experimental-edge') {
       baseline.runtime = 'edge'
     }
@@ -117,7 +121,7 @@ export async function getStaticInfoIncludingLayouts({
           }
         }
 
-        if (JSON.stringify(baseline) === JSON.stringify(turbopack)) {
+        if (JSON.stringify(baseline) === JSON.stringify(sort(turbopack))) {
           return turbopack
         }
 
