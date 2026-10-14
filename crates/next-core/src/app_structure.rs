@@ -2368,6 +2368,7 @@ async fn directory_tree_to_entrypoints_internal_untraced(
         let use_global_not_found =
             is_global_not_found_enabled || modules.global_not_found.is_some();
 
+        let not_found_page = app_page.clone_push_str("_not-found")?;
         let not_found_root_modules = modules.without_leaves();
         let not_found_tree = AppPageLoaderTree {
             page: app_page.clone(),
@@ -2378,7 +2379,9 @@ async fn directory_tree_to_entrypoints_internal_untraced(
                     segment: rcstr!("/_not-found"),
                     parallel_routes: fxindexmap! {
                         rcstr!("children") => AppPageLoaderTree {
-                            page: app_page.clone(),
+                            // Match the synthetic entry so its page exports participate in config
+                            // inheritance just like those of a filesystem page.
+                            page: not_found_page.clone(),
                             segment: rcstr!("__PAGE__"),
                             parallel_routes: FxIndexMap::default(),
                             modules: if use_global_not_found {
@@ -2442,9 +2445,7 @@ async fn directory_tree_to_entrypoints_internal_untraced(
         .resolved_cell();
 
         {
-            let app_page = app_page
-                .clone_push_str("_not-found")?
-                .complete(PageType::Page)?;
+            let app_page = not_found_page.complete(PageType::Page)?;
 
             add_app_page(
                 app_dir.clone(),
